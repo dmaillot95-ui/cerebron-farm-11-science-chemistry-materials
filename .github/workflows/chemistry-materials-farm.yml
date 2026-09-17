@@ -12,31 +12,9 @@ jobs:
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
-          roles=[
-          ["GENERAL_CHEMIST","general chemistry, stoichiometry, equilibria"],
-          ["PHYSICAL_CHEMIST","thermodynamics, kinetics, statistical mechanics"],
-          ["ORGANIC_CHEMIST","organic structure and reactivity"],
-          ["INORGANIC_CHEMIST","inorganic and coordination chemistry"],
-          ["CATALYSIS_SPECIALIST","catalysis and reaction pathways"],
-          ["ELECTROCHEMISTRY_SPECIALIST","electrochemistry and interfaces"],
-          ["CORROSION_SPECIALIST","corrosion, degradation, protection"],
-          ["POLYMER_SCIENTIST","polymers, rheology, aging"],
-          ["METALLURGIST","metals, alloys, phase transformations"],
-          ["CERAMICS_SPECIALIST","ceramics and refractory materials"],
-          ["COMPOSITES_SPECIALIST","composites and multiscale interfaces"],
-          ["NANOMATERIALS_SPECIALIST","nanostructures and surface effects"],
-          ["MATERIALS_CHARACTERIZATION","microscopy, spectroscopy, diffraction, metrology"],
-          ["PROCESS_ENGINEER","scale-up, separations, process windows"],
-          ["STRUCTURE_PROPERTY_ANALYST","structure-property-performance relations"],
-          ["EXPERIMENT_DESIGNER","controls, reproducibility, decisive experiments"],
-          ["SAFETY_AUDITOR","hazards, uncertainty, safe experimental framing"],
-          ["RED_TEAM","attack assumptions, mechanisms and claimed performance"],
-          ["REPLICATOR","independent reconstruction and validation plan"],
-          ["SYNTHESIZER_JUDGE","merge evidence, classify established/derived/conjectural/speculative"]]
+          roles=[["GENERAL_CHEMIST","general chemistry, stoichiometry, equilibria"],["PHYSICAL_CHEMIST","thermodynamics, kinetics, statistical mechanics"],["ORGANIC_CHEMIST","organic structure and reactivity"],["INORGANIC_CHEMIST","inorganic and coordination chemistry"],["CATALYSIS_SPECIALIST","catalysis and reaction pathways"],["ELECTROCHEMISTRY_SPECIALIST","electrochemistry and interfaces"],["CORROSION_SPECIALIST","corrosion, degradation, protection"],["POLYMER_SCIENTIST","polymers, rheology, aging"],["METALLURGIST","metals, alloys, phase transformations"],["CERAMICS_SPECIALIST","ceramics and refractory materials"],["COMPOSITES_SPECIALIST","composites and multiscale interfaces"],["NANOMATERIALS_SPECIALIST","nanostructures and surface effects"],["MATERIALS_CHARACTERIZATION","microscopy, spectroscopy, diffraction, metrology"],["PROCESS_ENGINEER","scale-up, separations, process windows"],["STRUCTURE_PROPERTY_ANALYST","structure-property-performance relations"],["EXPERIMENT_DESIGNER","controls, reproducibility, decisive experiments"],["SAFETY_AUDITOR","hazards, uncertainty, safe experimental framing"],["RED_TEAM","attack assumptions, mechanisms and claimed performance"],["REPLICATOR","independent reconstruction and validation plan"],["SYNTHESIZER_JUDGE","merge evidence, classify established/derived/conjectural/speculative"]]
           models=["huggingface-projects/llama-3.2-3B-Instruct","huggingface-projects/gemma-2-9b-it"]
-          inc=[]
-          for i,(r,f) in enumerate(roles): inc.append({'role':r,'focus':f,'model':models[i%2]})
-          print('matrix='+json.dumps({'include':inc}))
+          print('matrix='+json.dumps({'include':[{'role':r,'focus':f,'model':models[i%2]} for i,(r,f) in enumerate(roles)]}))
           PY
   agent:
     needs: plan
@@ -49,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
-      - run: pip install --quiet gradio_client
+      - run: pip install --quiet hf-gradio
       - name: Execute chemistry materials agent
         env:
           ROLE: ${{ matrix.role }}
@@ -75,8 +53,8 @@ jobs:
           for p in glob.glob('all/**/*.json',recursive=True):
             try: rows.append(json.load(open(p)))
             except: pass
-          ok=sum(x.get('status')=='SUCCESS' for x in rows)
-          packet={'farm':'11-science-chemistry-materials','roles_seen':len(rows),'successful_external_ai_calls':ok,'status':'UNREVIEWED_EXTERNAL_AGENT_OUTPUT'}
+          ok=[x for x in rows if x.get('status')=='SUCCESS']
+          packet={'farm':'11-science-chemistry-materials','roles_seen':len(rows),'successful_external_ai_calls':len(ok),'failed_external_ai_calls':len(rows)-len(ok),'status':'UNREVIEWED_EXTERNAL_AGENT_OUTPUT' if ok else 'EXTERNAL_INFERENCE_FAILED'}
           pathlib.Path('fusion').mkdir(); pathlib.Path('fusion/omega.json').write_text(json.dumps(packet,indent=2))
           PY
       - uses: actions/upload-artifact@v4
